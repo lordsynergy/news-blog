@@ -7,12 +7,14 @@ OpenCode Agent с моделью `opencode/deepseek-v4.1-flash-free`.
 ## Первоначальная настройка
 
 1. Создайте репозиторий на GitHub и отправьте в него ветку `main`.
-2. Установите [OpenCode Agent](https://github.com/apps/opencode-agent) для репозитория.
-3. В `Settings → Secrets and variables → Actions` добавьте секрет
+2. В `Settings → Secrets and variables → Actions` добавьте секрет
    `OPENCODE_API_KEY`.
-4. В `Settings → Pages → Build and deployment` выберите источник `GitHub Actions`.
-5. Откройте `Actions → Update news and deploy Pages → Run workflow`, чтобы создать
+3. В `Settings → Pages → Build and deployment` выберите источник `GitHub Actions`.
+4. Откройте `Actions → Update news and deploy Pages → Run workflow`, чтобы создать
    первый полноценный выпуск сразу, не дожидаясь понедельника.
+
+OpenCode GitHub App устанавливать не требуется: workflow использует встроенный
+`GITHUB_TOKEN` репозитория.
 
 Затем workflow запускается каждый понедельник в 09:15 по московскому времени.
 Предыдущий полноценный выпуск сохраняется в `data/archive/`. Новый выпуск
