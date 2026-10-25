@@ -54,16 +54,15 @@ jobs:
             echo "Current file is a seed issue; there is nothing to archive yet"
           fi
 
+      - name: Install OpenCode CLI
+        if: github.event_name != 'push'
+        run: curl -fsSL https://opencode.ai/install | bash
+
       - name: Generate weekly digest with OpenCode
         if: github.event_name != 'push'
-        uses: anomalyco/opencode/github@latest
         env:
           OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          model: opencode/deepseek-v4.1-flash-free
-          use_github_token: true
-          prompt: |
+          WEEKLY_PROMPT: |
             Ты — редактор русскоязычного еженедельного научного дайджеста.
 
             Обнови только файл data/news.json. Не изменяй код сайта, workflow и другие
@@ -107,6 +106,10 @@ jobs:
             }
 
             В каждом массиве должно быть ровно 5 объектов. Не добавляй другие поля.
+        run: >-
+          "$HOME/.opencode/bin/opencode" run --auto
+          --model opencode/deepseek-v4.1-flash-free
+          "$WEEKLY_PROMPT"
 
       - name: Validate generated digest
         if: github.event_name != 'push'

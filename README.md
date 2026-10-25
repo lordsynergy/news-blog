@@ -13,8 +13,8 @@ OpenCode Agent с моделью `opencode/deepseek-v4.1-flash-free`.
 4. Откройте `Actions → Update news and deploy Pages → Run workflow`, чтобы создать
    первый полноценный выпуск сразу, не дожидаясь понедельника.
 
-OpenCode GitHub App устанавливать не требуется: workflow использует встроенный
-`GITHUB_TOKEN` репозитория.
+OpenCode GitHub App устанавливать не требуется: workflow запускает OpenCode CLI
+на GitHub runner и коммитит проверенный результат встроенным `GITHUB_TOKEN`.
 
 Затем workflow запускается каждый понедельник в 09:15 по московскому времени.
 Предыдущий полноценный выпуск сохраняется в `data/archive/`. Новый выпуск
