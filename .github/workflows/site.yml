@@ -1,0 +1,173 @@
+name: Update news and deploy Pages
+
+on:
+  push:
+    branches: [main]
+  issue_comment:
+    types: [created]
+  schedule:
+    # Monday, 09:15 Moscow time (06:15 UTC).
+    - cron: "15 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    if: |
+      github.event_name != 'issue_comment' ||
+      (
+        !github.event.issue.pull_request &&
+        github.event.comment.user.login == 'lordsynergy' &&
+        github.event.comment.body == '/news'
+      )
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Configure Git author
+        if: github.event_name != 'push'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Preserve current issue for the archive
+        if: github.event_name != 'push'
+        run: |
+          if python3 scripts/validate_news.py --allow-stale data/news.json; then
+            previous_date="$(python3 -c 'import json; print(json.load(open("data/news.json"))["updated_at"])')"
+            cp data/news.json "/tmp/news-${previous_date}.json"
+            echo "PREVIOUS_ISSUE=/tmp/news-${previous_date}.json" >> "$GITHUB_ENV"
+            echo "PREVIOUS_DATE=${previous_date}" >> "$GITHUB_ENV"
+          else
+            echo "Current file is a seed issue; there is nothing to archive yet"
+          fi
+
+      - name: Generate weekly digest with OpenCode
+        if: github.event_name != 'push'
+        uses: anomalyco/opencode/github@latest
+        env:
+          OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          model: opencode/deepseek-v4.1-flash-free
+          use_github_token: true
+          prompt: |
+            Ты — редактор русскоязычного еженедельного научного дайджеста.
+
+            Обнови только файл data/news.json. Не изменяй код сайта, workflow и другие
+            файлы. Не запускай git, не делай commit, не создавай ветку, issue или PR:
+            последующие шаги workflow сами проверят и сохранят результат.
+
+            Найди свежие и значимые материалы за последние 7 дней по трём темам:
+            psychology — психология и когнитивные науки;
+            chemistry — химия и материаловедение;
+            biology — биология, генетика, экология и эволюция.
+
+            Если за 7 дней недостаточно качественных материалов, расширь период до
+            14 дней. Используй веб-поиск. Предпочитай оригинальные статьи научных
+            журналов, официальные сайты университетов и исследовательских организаций.
+            Не используй социальные сети, SEO-сайты, агрегаторы без ссылки на первичный
+            источник и публикации без проверяемой даты. Проверь, что каждая ссылка
+            открывается и действительно подтверждает заголовок и резюме.
+
+            Выбери ровно 5 разных материалов для каждой темы. Не повторяй одну
+            публикацию в разных разделах. Заголовок и резюме напиши по-русски.
+            Резюме должно занимать 2–3 предложения, объяснять результат простым языком,
+            не преувеличивать выводы и не давать медицинских рекомендаций.
+
+            Сохрани строго валидный JSON без Markdown в следующей структуре:
+            {
+              "updated_at": "YYYY-MM-DD",
+              "generated_at": "ISO-8601 timestamp in UTC",
+              "categories": {
+                "psychology": [
+                  {
+                    "title": "...",
+                    "summary": "...",
+                    "source": "Краткое название источника",
+                    "url": "https://...",
+                    "published_at": "YYYY-MM-DD"
+                  }
+                ],
+                "chemistry": [],
+                "biology": []
+              }
+            }
+
+            В каждом массиве должно быть ровно 5 объектов. Не добавляй другие поля.
+
+      - name: Validate generated digest
+        if: github.event_name != 'push'
+        run: python3 scripts/validate_news.py data/news.json
+
+      - name: Commit the new issue
+        if: github.event_name != 'push'
+        env:
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          issue_date="$(python3 -c 'import json; print(json.load(open("data/news.json"))["updated_at"])')"
+          if [ -n "${PREVIOUS_ISSUE:-}" ]; then
+            mkdir -p data/archive
+            cp "$PREVIOUS_ISSUE" "data/archive/${PREVIOUS_DATE}.json"
+            git add "data/archive/${PREVIOUS_DATE}.json"
+          fi
+          git add data/news.json
+          if git diff --cached --quiet; then
+            echo "Digest has not changed"
+          else
+            git commit -m "content: update weekly science digest for ${issue_date}"
+            git push origin "HEAD:${DEFAULT_BRANCH}"
+          fi
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Assemble static site
+        run: |
+          mkdir -p _site
+          cp index.html _site/index.html
+          cp -R assets _site/assets
+          cp -R data _site/data
+          touch _site/.nojekyll
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+
+  deploy:
+    needs: prepare
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+      - name: Confirm manual update in the issue
+        if: github.event_name == 'issue_comment'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: `Готово — новый выпуск опубликован: ${process.env.PAGE_URL}`,
+            });
+        env:
+          PAGE_URL: ${{ steps.deployment.outputs.page_url }}

@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Пять главных новостей недели из психологии, химии и биологии — коротко, понятно и со ссылками на источники."
+    />
+    <meta name="theme-color" content="#f4f1e8" />
+    <title>Научная среда — новости психологии, химии и биологии</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Prata&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="assets/styles.css" />
+    <script src="assets/app.js" defer></script>
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="#top" aria-label="Научная среда — на главную">
+        <span class="brand-mark" aria-hidden="true">НС</span>
+        <span>Научная среда</span>
+      </a>
+      <nav aria-label="Разделы сайта">
+        <a href="#psychology">Психология</a>
+        <a href="#chemistry">Химия</a>
+        <a href="#biology">Биология</a>
+      </nav>
+    </header>
+
+    <main id="top">
+      <section class="hero" aria-labelledby="hero-title">
+        <div class="hero-copy">
+          <p class="eyebrow">Еженедельный научный дайджест</p>
+          <h1 id="hero-title">Наука меняется.<br />Мы выбираем главное.</h1>
+          <p class="hero-intro">
+            Пять важных публикаций недели из психологии, химии и биологии —
+            без сенсационности, с коротким объяснением и прямой ссылкой на источник.
+          </p>
+          <p class="issue-line">
+            <span class="pulse" aria-hidden="true"></span>
+            <span id="issue-label">Загружаем свежий выпуск…</span>
+          </p>
+        </div>
+        <div class="hero-art" aria-hidden="true">
+          <span class="orbit orbit-one"></span>
+          <span class="orbit orbit-two"></span>
+          <span class="core"></span>
+          <span class="formula formula-one">ψ</span>
+          <span class="formula formula-two">C₆H₁₂O₆</span>
+          <span class="formula formula-three">ATCG</span>
+        </div>
+      </section>
+
+      <section class="manifesto" aria-label="О дайджесте">
+        <p>15 материалов</p>
+        <p>3 области науки</p>
+        <p>1 раз в неделю</p>
+      </section>
+
+      <div id="news-root" class="news-root" aria-live="polite">
+        <div class="loading-state">
+          <span></span><span></span><span></span>
+          <p>Собираем выпуск…</p>
+        </div>
+      </div>
+
+      <section class="method">
+        <p class="eyebrow">Как это работает</p>
+        <div class="method-grid">
+          <h2>Сначала источники.<br />Потом — алгоритм.</h2>
+          <div>
+            <p>
+              Каждую неделю автоматический редактор просматривает свежие научные
+              публикации, убирает повторы и выбирает материалы с понятным результатом.
+            </p>
+            <p>
+              ИИ помогает ранжировать и пересказывать, но каждая карточка ведёт к
+              исходной публикации. Дайджест не заменяет консультацию специалиста.
+            </p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <a class="brand footer-brand" href="#top">
+        <span class="brand-mark" aria-hidden="true">НС</span>
+        <span>Научная среда</span>
+      </a>
+      <p>Психология · Химия · Биология</p>
+      <p>Обновляется автоматически по понедельникам</p>
+    </footer>
+  </body>
+</html>
