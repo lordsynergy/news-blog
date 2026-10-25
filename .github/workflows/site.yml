@@ -13,6 +13,7 @@ on:
 permissions:
   contents: write
   issues: write
+  pull-requests: write
   pages: write
   id-token: write
 
@@ -54,20 +55,22 @@ jobs:
             echo "Current file is a seed issue; there is nothing to archive yet"
           fi
 
-      - name: Install OpenCode CLI
-        if: github.event_name != 'push'
-        run: curl -fsSL https://opencode.ai/install | bash
-
       - name: Generate weekly digest with OpenCode
         if: github.event_name != 'push'
+        uses: anomalyco/opencode/github@latest
         env:
           OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
-          WEEKLY_PROMPT: |
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          model: opencode/deepseek-v4.1-flash-free
+          use_github_token: true
+          prompt: |
             Ты — редактор русскоязычного еженедельного научного дайджеста.
 
             Обнови только файл data/news.json. Не изменяй код сайта, workflow и другие
-            файлы. Не запускай git, не делай commit, не создавай ветку, issue или PR:
-            последующие шаги workflow сами проверят и сохранят результат.
+            файлы. Интеграция OpenCode сама создаст техническую ветку и pull request.
+            Не изменяй и не закрывай этот pull request самостоятельно: последующие
+            шаги workflow проверят результат и автоматически сольют его.
 
             Найди свежие и значимые материалы за последние 7 дней по трём темам:
             psychology — психология и когнитивные науки;
@@ -106,33 +109,37 @@ jobs:
             }
 
             В каждом массиве должно быть ровно 5 объектов. Не добавляй другие поля.
-        run: >-
-          "$HOME/.opencode/bin/opencode" run --auto
-          --model opencode/deepseek-v4.1-flash-free
-          "$WEEKLY_PROMPT"
 
       - name: Validate generated digest
         if: github.event_name != 'push'
         run: python3 scripts/validate_news.py data/news.json
 
-      - name: Commit the new issue
+      - name: Add the previous issue to the update branch
         if: github.event_name != 'push'
-        env:
-          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
-          issue_date="$(python3 -c 'import json; print(json.load(open("data/news.json"))["updated_at"])')"
           if [ -n "${PREVIOUS_ISSUE:-}" ]; then
             mkdir -p data/archive
             cp "$PREVIOUS_ISSUE" "data/archive/${PREVIOUS_DATE}.json"
             git add "data/archive/${PREVIOUS_DATE}.json"
           fi
           git add data/news.json
-          if git diff --cached --quiet; then
-            echo "Digest has not changed"
-          else
-            git commit -m "content: update weekly science digest for ${issue_date}"
-            git push origin "HEAD:${DEFAULT_BRANCH}"
+          if ! git diff --cached --quiet; then
+            git commit -m "content: archive previous science digest"
+            git push origin HEAD
           fi
+
+      - name: Merge the generated pull request
+        if: github.event_name != 'push'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          branch_name="$(git branch --show-current)"
+          pr_number="$(gh pr list --head "$branch_name" --state open --json number --jq '.[0].number')"
+          if [ -z "$pr_number" ]; then
+            echo "OpenCode did not create a pull request for ${branch_name}" >&2
+            exit 1
+          fi
+          gh pr merge "$pr_number" --squash --delete-branch
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
